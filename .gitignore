@@ -1,4 +1,4 @@
-build/
+build*/
 build.clang/
 components/
 managed_components/
