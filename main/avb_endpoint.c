@@ -188,6 +188,58 @@ static void start_ethernet_endpoint(void) {
 static EventGroupHandle_t s_wifi_events;
 #define BIT_STA_CONNECTED BIT0
 
+/* RX-stall watchdog. The C6 Wi-Fi receive path wedges after a few
+ * minutes of uptime: layered RX instrumentation (esp_avb avbstats.c)
+ * proved the radio/driver KEEPS receiving (esp_wifi_get_rx_statistics
+ * legacy/ht counters climb the whole time) but frames stop being handed
+ * up to our registered rxcb (avb_wifi_rx_cb) — so the dispatcher RX
+ * counter freezes while heap stays flat. The leak is in the esp_wifi
+ * driver's deliver-to-host buffer/descriptor pool, ABOVE the MAC and
+ * BELOW our callback. A soft disassoc/reassoc does NOT clear it (tested:
+ * the dispatcher counter stayed frozen across 9 forced reassociations) —
+ * the radio never lost the link, so reassoc doesn't touch the wedged
+ * pool. Recovery therefore re-inits the Wi-Fi driver itself with
+ * esp_wifi_stop()+esp_wifi_start(); the WIFI_EVENT_STA_START handler
+ * then reconnects. Detection: watch esp_avb's monotonic dispatcher RX
+ * counter; if it stops advancing for RX_STALL_TIMEOUT_US of WALL-CLOCK
+ * time while associated, restart the driver.
+ *
+ * Timing is wall-clock via esp_timer_get_time(), NOT a count of
+ * heartbeat-loop iterations: when RX wedges, the main loop's own cadence
+ * slows markedly (observed ~10x), so an iteration counter took ~300 s to
+ * reach a nominal "30 s" threshold. esp_timer is unaffected by loop
+ * starvation, so the trip fires at a true RX_STALL_TIMEOUT_US.
+ * avb_net_rx_breakdown is declared extern here (it lives in esp_avb's
+ * internal avb.h, not the public esp_avb.h) following the same pattern
+ * as other internal esp_avb/esp_wifi entry points in this codebase. */
+extern void avb_net_rx_breakdown(uint32_t *total, uint32_t *avtp,
+                                 uint32_t *msrp, uint32_t *mvrp,
+                                 uint32_t *vlan, uint32_t *other);
+/* Light first-line RX recovery: re-point the WIFI_IF_STA rxcb slot back
+ * at esp_avb's dispatcher. Same local-extern rationale as above. */
+extern esp_err_t avb_net_wifi_reregister_rxcb(void);
+#define RX_STALL_TIMEOUT_US (10 * 1000 * 1000) /* 10 s of no RX advance */
+
+/* Heavy second-line RX recovery: re-initialize the Wi-Fi driver.
+ * stop() tears down the driver's RX path (freeing any wedged delivery
+ * buffers); start() re-arms it and fires WIFI_EVENT_STA_START, whose
+ * handler calls esp_wifi_connect() to rejoin. The watchdog only
+ * escalates here when a cheap rxcb re-registration first failed to
+ * restore delivery — i.e. the stall is deeper than a displaced rxcb
+ * slot. Heavier than a reassoc. */
+static void wifi_rx_stall_recover(void) {
+  esp_err_t r = esp_wifi_stop();
+  if (r != ESP_OK) {
+    ESP_LOGE(TAG, "RX-stall recover: esp_wifi_stop failed: %s",
+             esp_err_to_name(r));
+  }
+  r = esp_wifi_start();
+  if (r != ESP_OK) {
+    ESP_LOGE(TAG, "RX-stall recover: esp_wifi_start failed: %s",
+             esp_err_to_name(r));
+  }
+}
+
 /* Application-side Wi-Fi housekeeping. Connect/reconnect logic and a
  * connection-ready signal that start_wifi_endpoint waits on before
  * bringing up the AVB stack. All §12.7 / FTM handling lives inside
@@ -226,7 +278,13 @@ static void wifi_sta_init(void) {
   if (loop_r != ESP_OK && loop_r != ESP_ERR_INVALID_STATE) {
     ESP_ERROR_CHECK(loop_r);
   }
-  esp_netif_create_default_wifi_sta();
+  /* Deliberately NOT creating the default STA netif. Its STA event
+   * handlers re-attach the netif's own Wi-Fi RX callback on every
+   * (re)association, which displaces the raw esp_wifi_internal_reg_rxcb
+   * hook esp_avb installs for the AVB data plane — the root cause of the
+   * post-reassociation RX freeze. This endpoint is pure L2 (gPTP/AVTP
+   * over raw frames, no IP), so it needs no lwIP netif; esp_avb reads
+   * the STA MAC directly via esp_wifi_get_mac when no netif is present. */
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -264,9 +322,10 @@ static void start_wifi_endpoint(void) {
   /* Wait for STA association before bringing up AVB so the RX callback that
    * avb_net_init registers (esp_wifi_internal_reg_rxcb) sees a
    * connected interface. eth_handle=NULL signals the wifi data-plane
-   * to avb_net_transmit_raw + the senders; eth_interface holds the
-   * netif if_key ("WIFI_STA_DEF" is what esp_netif_create_default_wifi_sta
-   * uses) so avb_net_init can fetch the MAC via esp_netif_get_mac. */
+   * to avb_net_transmit_raw + the senders. eth_interface is just a
+   * label here ("WIFI_STA_DEF"): with no default STA netif created,
+   * the if_key lookup in avb_net_init returns NULL and it reads the
+   * STA MAC directly via esp_wifi_get_mac. */
   ESP_LOGI(TAG, "Waiting for STA association before starting AVB");
   xEventGroupWaitBits(s_wifi_events, BIT_STA_CONNECTED, pdFALSE, pdTRUE,
                       portMAX_DELAY);
@@ -275,10 +334,8 @@ static void start_wifi_endpoint(void) {
    * the §12.7 beacon-IE parser, the FTM initiator burst loop, and
    * the FTM_REPORT handler that feeds inject_peer_delay +
    * inject_sync_pair (see ptp_wifi_sta.c). The application no longer
-   * touches §12.7 IE bytes or FTM cadence. Interface label
-   * "WIFI_STA_DEF" matches the lwIP netif key the rest of the
-   * endpoint uses; the daemon treats it as a label on this medium
-   * (no netif open). */
+   * touches §12.7 IE bytes or FTM cadence. "WIFI_STA_DEF" is just a
+   * medium label here; the daemon does not open a netif. */
   if (ptpd_start_port(0, "WIFI_STA_DEF", ptp_port_medium_wifi_ftm) < 0) {
     ESP_LOGE(TAG, "ptpd_start_port wifi_ftm failed — wireless clock will "
                   "not lock");
@@ -400,9 +457,73 @@ void app_main(void) {
   TaskHandle_t t1 = xTaskGetHandle(t1_name);
   TaskHandle_t t2 = xTaskGetHandle(t2_name);
 
+#if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
+    defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
+  /* RX-stall watchdog state. Wall-clock based: remember the dispatcher
+   * RX total and the esp_timer timestamp when it last advanced. */
+  uint32_t rx_stall_prev_total = 0;
+  int64_t rx_stall_last_advance_us = 0;
+  bool rx_stall_primed = false;
+  bool rx_stall_rereg_tried = false; /* gentle rxcb re-reg attempted? */
+#endif
+
   while (1) {
     vTaskDelay(pdMS_TO_TICKS(task_monitor_period));
     ESP_LOGI(TAG, "heartbeat");
+
+#if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
+    defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
+    /* RX-stall watchdog — only meaningful while associated; the driver
+     * restart clears BIT_STA_CONNECTED (via WIFI_EVENT_STA_DISCONNECTED)
+     * and re-arms the detector once it reassociates. */
+    if (s_wifi_events &&
+        (xEventGroupGetBits(s_wifi_events) & BIT_STA_CONNECTED)) {
+      uint32_t rx_total = 0;
+      avb_net_rx_breakdown(&rx_total, NULL, NULL, NULL, NULL, NULL);
+      int64_t now_us = esp_timer_get_time();
+      if (!rx_stall_primed || rx_total != rx_stall_prev_total) {
+        /* First sample after (re)association, or RX advanced — reset the
+         * stall clock and the recovery escalation ladder. */
+        rx_stall_prev_total = rx_total;
+        rx_stall_last_advance_us = now_us;
+        rx_stall_primed = true;
+        rx_stall_rereg_tried = false;
+      } else if (now_us - rx_stall_last_advance_us >= RX_STALL_TIMEOUT_US) {
+        if (!rx_stall_rereg_tried) {
+          /* First-line recovery: the single rxcb slot may have been
+           * displaced (netif reattach on reconnect re-points it at the
+           * lwIP path). Re-register ours and grant another
+           * RX_STALL_TIMEOUT_US to prove out before escalating. */
+          ESP_LOGW(TAG,
+                   "Wi-Fi RX stalled %lldms (dispatcher total=%u frozen) — "
+                   "re-registering rxcb",
+                   (long long)((now_us - rx_stall_last_advance_us) / 1000),
+                   (unsigned)rx_total);
+          esp_err_t rr = avb_net_wifi_reregister_rxcb();
+          if (rr != ESP_OK) {
+            ESP_LOGE(TAG, "rxcb re-register failed: %s", esp_err_to_name(rr));
+          }
+          rx_stall_rereg_tried = true;
+          rx_stall_last_advance_us = now_us; /* grace period for re-reg */
+        } else {
+          /* Re-reg did not restore flow within the grace period — the
+           * stall is deeper than a displaced rxcb. Escalate to a driver
+           * restart. */
+          ESP_LOGW(TAG,
+                   "Wi-Fi RX still stalled %lldms after rxcb re-register "
+                   "(dispatcher total=%u) — restarting Wi-Fi driver",
+                   (long long)((now_us - rx_stall_last_advance_us) / 1000),
+                   (unsigned)rx_total);
+          rx_stall_primed = false;      /* re-arm on next sample post-restart */
+          rx_stall_rereg_tried = false; /* reset escalation ladder */
+          wifi_rx_stall_recover();
+        }
+      }
+    } else {
+      rx_stall_primed = false;
+      rx_stall_rereg_tried = false;
+    }
+#endif
 #ifdef CONFIG_HEAP_TRACING_STANDALONE
     if (s_heap_trace_dump_pending) {
       s_heap_trace_dump_pending = false;
