@@ -261,11 +261,17 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id,
     xEventGroupSetBits(s_wifi_events, BIT_STA_CONNECTED);
     break;
   }
-  case WIFI_EVENT_STA_DISCONNECTED:
-    ESP_LOGW(TAG, "Disconnected — retry");
+  case WIFI_EVENT_STA_DISCONNECTED: {
+    wifi_event_sta_disconnected_t *e = (wifi_event_sta_disconnected_t *)data;
+    /* reason distinguishes AP-not-found (201) from auth/handshake failure
+     * (2/15) from a deauth by the AP — essential for telling "bridge AP
+     * down" apart from a local config/credential problem. */
+    ESP_LOGW(TAG, "Disconnected — retry (reason %u, rssi %d)", e->reason,
+             e->rssi);
     xEventGroupClearBits(s_wifi_events, BIT_STA_CONNECTED);
     esp_wifi_connect();
     break;
+  }
   default:
     break;
   }
