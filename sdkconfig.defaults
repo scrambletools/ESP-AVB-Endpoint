@@ -61,7 +61,11 @@ CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0=n
 
 # Increase EMAC DMA RX buffers and L2TAP queue for high-bandwidth AVB
 # listener streams (8000 pkt/sec for Class A 8-channel AM824).
-CONFIG_ETH_DMA_RX_BUFFER_NUM=30
+# 60 descriptors = ~3.8 ms of burst absorption at 16k pkt/s
+# bidirectional; 30 proved too shallow during controller-enumeration
+# bursts coinciding with stream start (RX FIFO overflow → the P4
+# threshold-mode MTL lockup the esp_avb un-wedge guard exists for).
+CONFIG_ETH_DMA_RX_BUFFER_NUM=60
 CONFIG_ESP_NETIF_L2_TAP_RX_QUEUE_SIZE=64
 # Buffer size 1536 covers the full 1518 B ethernet MTU (+64-byte align).
 # At the old 512 B each AAF audio frame (~810 B) needed 2 buffers, cutting
