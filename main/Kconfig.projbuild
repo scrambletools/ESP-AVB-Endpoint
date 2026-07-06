@@ -99,18 +99,17 @@ menu "AVB Example Configuration"
             I/O is disabled. Used for control-plane reproduction
             tests on hosts without matching audio hardware.
 
-    config EXAMPLE_AVB_CODEC_ES8388_HAT
-        bool "Use ES8388 Scramble Hat (overrides ES8311 onboard default)"
+    config EXAMPLE_AVB_CODEC_ES8389_HAT
+        bool "Use ES8389 Scramble Hat (overrides ES8311 onboard default)"
         default n
         depends on !EXAMPLE_AVB_CODEC_DISABLED
         help
-            Use the Scramble Hat ES8388 codec instead of the onboard
+            Use the Scramble Hat ES8389 codec instead of the onboard
             ES8311. Overrides avb_config.codec_type to
-            avb_codec_type_es8388 and remaps codec_pins to the Scramble
+            avb_codec_type_es8389 and remaps codec_pins to the Scramble
             Hat layout (per the comment block in esp_avb/avbconfig.h:
             MCLK=16 BCLK=17 WS=19 DOUT=18 DIN=54 I2C_SDA=21 I2C_SCL=20
-            PA=-1). Boards: ESP32-P4-ETH fitted with the Scramble Hat
-            (e.g. ESP1).
+            PA=-1). Boards: ESP32-P4-ETH fitted with the Scramble Hat.
 
     config AVB_ENDPOINT_PERF_TEST_MODE
         bool "Perf-test mode (skip PTP/AVB/codec, count matching AVTP frames on WiFi STA)"
