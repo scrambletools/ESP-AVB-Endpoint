@@ -134,6 +134,7 @@ static void start_ethernet_endpoint(void) {
   avb_config.model_id = CONFIG_EXAMPLE_AVB_MODEL_ID;
   avb_config.talker = CONFIG_EXAMPLE_AVB_TALKER;
   avb_config.listener = CONFIG_EXAMPLE_AVB_LISTENER;
+  avb_config.default_sample_rate = CONFIG_EXAMPLE_AVB_SAMPLE_RATE;
   avb_config.default_mic_gain_tenth_db = CONFIG_EXAMPLE_AVB_MIC_GAIN_TENTH_DB;
   avb_config.default_speaker_vol_tenth_db =
       CONFIG_EXAMPLE_AVB_SPEAKER_VOL_TENTH_DB;
@@ -352,6 +353,7 @@ static void start_wifi_endpoint(void) {
   avb_config.model_id = CONFIG_EXAMPLE_AVB_MODEL_ID;
   avb_config.talker = CONFIG_EXAMPLE_AVB_TALKER;
   avb_config.listener = CONFIG_EXAMPLE_AVB_LISTENER;
+  avb_config.default_sample_rate = CONFIG_EXAMPLE_AVB_SAMPLE_RATE;
   avb_config.default_mic_gain_tenth_db = CONFIG_EXAMPLE_AVB_MIC_GAIN_TENTH_DB;
   avb_config.default_speaker_vol_tenth_db =
       CONFIG_EXAMPLE_AVB_SPEAKER_VOL_TENTH_DB;

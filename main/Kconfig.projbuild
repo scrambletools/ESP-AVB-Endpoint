@@ -20,6 +20,14 @@ menu "AVB Example Configuration"
         help
             Function as AVB Talker.
 
+    config EXAMPLE_AVB_SAMPLE_RATE
+        int "Media sample rate (Hz)"
+        default 48000
+        help
+            Boot-time sample rate for the audio streams and media clock.
+            Use 48000, 96000 or 192000; the effective rate is limited by
+            the selected codec's capabilities.
+
     config EXAMPLE_AVB_TALKER_AUTO_STREAM
         bool "Auto Stream"
         depends on EXAMPLE_AVB_TALKER
