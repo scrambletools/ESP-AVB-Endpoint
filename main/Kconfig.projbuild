@@ -38,11 +38,14 @@ menu "AVB Example Configuration"
     choice EXAMPLE_SELECT_MIC_GAIN
         prompt "Default MIC gain"
         depends on EXAMPLE_AVB_TALKER
+        default MIC_GAIN_36DB if EXAMPLE_AVB_CODEC_ES8389_HAT
         default MIC_GAIN_6DB
         help
             Select a codec-independent default mic gain. The AVB component
             clamps and rounds this to the nearest value supported by the
-            selected codec.
+            selected codec. Mic-level sources (e.g. an XLR microphone on
+            the ES8389 hat's combo jack) need most of the PGA range; a
+            6 dB default leaves speech ~30 dB below visible meter level.
 
         config MIC_GAIN_0DB
             bool "0 dB"
@@ -54,6 +57,10 @@ menu "AVB Example Configuration"
             bool "18 dB"
         config MIC_GAIN_24DB
             bool "24 dB"
+        config MIC_GAIN_30DB
+            bool "30 dB"
+        config MIC_GAIN_36DB
+            bool "36 dB"
     endchoice
       
     config EXAMPLE_AVB_MIC_GAIN_TENTH_DB
@@ -64,6 +71,8 @@ menu "AVB Example Configuration"
         default 120 if MIC_GAIN_12DB
         default 180 if MIC_GAIN_18DB
         default 240 if MIC_GAIN_24DB
+        default 300 if MIC_GAIN_30DB
+        default 360 if MIC_GAIN_36DB
 
     config EXAMPLE_AVB_LISTENER
         bool "Enable AVB Listener"
