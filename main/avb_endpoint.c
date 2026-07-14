@@ -207,9 +207,9 @@ static EventGroupHandle_t s_wifi_events;
  *
  * Timing is wall-clock via esp_timer_get_time(), NOT a count of
  * heartbeat-loop iterations: when RX wedges, the main loop's own cadence
- * slows markedly (observed ~10x), so an iteration counter took ~300 s to
- * reach a nominal "30 s" threshold. esp_timer is unaffected by loop
- * starvation, so the trip fires at a true RX_STALL_TIMEOUT_US.
+ * slows markedly (observed ~10x), so an iteration counter overshoots
+ * its nominal threshold by that same factor. esp_timer is unaffected
+ * by loop starvation, so the trip fires at a true RX_STALL_TIMEOUT_US.
  * avb_net_rx_breakdown is declared extern here (it lives in esp_avb's
  * internal avb.h, not the public esp_avb.h) following the same pattern
  * as other internal esp_avb/esp_wifi entry points in this codebase. */
@@ -475,9 +475,16 @@ void app_main(void) {
   bool rx_stall_rereg_tried = false; /* gentle rxcb re-reg attempted? */
 #endif
 
+  int hb_count = 0;
   while (1) {
     vTaskDelay(pdMS_TO_TICKS(task_monitor_period));
-    ESP_LOGI(TAG, "heartbeat");
+    /* One heartbeat line per minute is enough to prove the main loop
+     * is alive; the loop itself still ticks every period for the
+     * watchdogs below. */
+    if (++hb_count >= 60) {
+      hb_count = 0;
+      ESP_LOGI(TAG, "heartbeat");
+    }
 
 #if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
     defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
