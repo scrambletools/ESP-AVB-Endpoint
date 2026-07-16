@@ -75,3 +75,9 @@ CONFIG_ESP_NETIF_L2_TAP_RX_QUEUE_SIZE=64
 # stream load — this doubles the headroom without touching ETH_SOFT_FLOW_
 # CONTROL (which would emit 802.3x PAUSE frames, forbidden on AVB ports).
 CONFIG_ETH_DMA_BUFFER_SIZE=1536
+
+# EMAC TX descriptors: the IDF default of 10 exhausts under AVB Lite
+# unicast fan-out (per-listener stream duplication, ~26 kpps at three
+# 96 kHz listeners) when the once-per-second control burst lands on a
+# stream TX slot — measured ~1 lost frame copy per second at fan-out 3.
+CONFIG_ETH_DMA_TX_BUFFER_NUM=24
