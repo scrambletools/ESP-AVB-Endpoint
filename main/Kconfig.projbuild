@@ -124,9 +124,31 @@ menu "AVB Example Configuration"
             Use the Scramble Hat ES8389 codec instead of the onboard
             ES8311. Overrides avb_config.codec_type to
             avb_codec_type_es8389 and remaps codec_pins to the Scramble
-            Hat layout (per the comment block in esp_avb/avbconfig.h:
-            MCLK=16 BCLK=17 WS=19 DOUT=18 DIN=54 I2C_SDA=21 I2C_SCL=20
-            PA=-1). Boards: ESP32-P4-ETH fitted with the Scramble Hat.
+            Hat layout for the pinout revision selected below (both maps
+            documented in esp_avb/avbconfig.h). Boards: ESP32-P4-ETH
+            fitted with the Scramble Hat, directly or via the Synthia
+            eurorack interposer (its crossover preserves the same
+            carrier GPIO map).
+
+    choice EXAMPLE_AVB_ES8389_HAT_PINOUT
+        prompt "Scramble Hat pinout revision"
+        depends on EXAMPLE_AVB_CODEC_ES8389_HAT
+        default EXAMPLE_AVB_ES8389_HAT_PINOUT_V3
+        help
+            Mezzanine pinout revision of the fitted hat. v3 boards
+            (produced 2026-07) use the original pin map. v4 boards use
+            the 2026-08 dual-host (ESP32-P4 + Raspberry Pi Pico)
+            revision: I2C moved to the J3 signal row, BCLK/LRCK made
+            adjacent, MCLK/DET moved to J4.6/J4.7. Selecting the wrong
+            revision gives a silent codec (I2C lands on I2S pins) —
+            check the revision marking on the board.
+
+        config EXAMPLE_AVB_ES8389_HAT_PINOUT_V3
+            bool "v3 (MCLK=16 BCLK=17 WS=19 DOUT=18 DIN=54 SDA=21 SCL=20)"
+
+        config EXAMPLE_AVB_ES8389_HAT_PINOUT_V4
+            bool "v4 (MCLK=20 BCLK=17 WS=16 DOUT=18 DIN=15 SDA=54 SCL=19)"
+    endchoice
 
     config AVB_ENDPOINT_PERF_TEST_MODE
         bool "Perf-test mode (skip PTP/AVB/codec, count matching AVTP frames on WiFi STA)"

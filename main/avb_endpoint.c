@@ -147,12 +147,24 @@ static void start_ethernet_endpoint(void) {
 
 #ifdef CONFIG_EXAMPLE_AVB_CODEC_ES8389_HAT
   /* Override the default ES8311 onboard codec selection + pins with
-   * the Scramble Hat ES8389 wiring (pinout documented in
-   * esp_avb/avbconfig.h's "Scramble Hat" comment block). codec_type
-   * is const-qualified in avb_config_s — cast away const for this
-   * init-time override; nothing reads codec_type before avb_start()
-   * runs so the one-shot mutation is safe. */
+   * the Scramble Hat ES8389 wiring (both pinout revisions documented
+   * in esp_avb/avbconfig.h's "Scramble Hat" comment blocks).
+   * codec_type is const-qualified in avb_config_s — cast away const
+   * for this init-time override; nothing reads codec_type before
+   * avb_start() runs so the one-shot mutation is safe. */
   *(avb_codec_type_t *)&avb_config.codec_type = avb_codec_type_es8389;
+#ifdef CONFIG_EXAMPLE_AVB_ES8389_HAT_PINOUT_V4
+  /* v4: 2026-08 dual-host revision (I2C on the J3 signal row,
+   * MCLK/DET on J4.6/J4.7) */
+  avb_config.codec_pins.mclk    = 20;
+  avb_config.codec_pins.bclk    = 17;
+  avb_config.codec_pins.ws      = 16;
+  avb_config.codec_pins.dout    = 18;
+  avb_config.codec_pins.din     = 15;
+  avb_config.codec_pins.i2c_sda = 54;
+  avb_config.codec_pins.i2c_scl = 19;
+#else
+  /* v3: original pinout (boards produced 2026-07) */
   avb_config.codec_pins.mclk    = 16;
   avb_config.codec_pins.bclk    = 17;
   avb_config.codec_pins.ws      = 19;
@@ -160,6 +172,7 @@ static void start_ethernet_endpoint(void) {
   avb_config.codec_pins.din     = 54;
   avb_config.codec_pins.i2c_sda = 21;
   avb_config.codec_pins.i2c_scl = 20;
+#endif
   avb_config.codec_pins.pa      = -1;
   avb_config.codec_pins.pa_reverted = false;
 #endif
