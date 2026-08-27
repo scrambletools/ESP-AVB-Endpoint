@@ -183,6 +183,69 @@ menu "AVB Example Configuration"
             Must match the bridge perf-test mode's STREAM_ID. Frames
             with any other stream_id are dropped at the filter.
 
+    config AVB_ENDPOINT_PERF_TEST_TX_MODE
+        bool "Perf-test direction: TRANSMIT (uplink) instead of receive"
+        default n
+        depends on AVB_ENDPOINT_PERF_TEST_MODE
+        help
+            Default (n) is the receive role: count AVTP frames arriving
+            from the bridge's SoftAP (downlink). Set y to invert the
+            role and blast AVTP-shaped frames at the AP instead, so the
+            STA->AP (uplink) direction can be measured with the same
+            esp_wifi_internal_tx path the bridge uses downlink.
+
+            Uplink and downlink are not symmetric. Per IEEE 802.11
+            Table 9-30, a To-DS frame carries Address 1 = BSSID, an
+            individual address, even when the MSDU is group addressed,
+            so uplink group traffic is ACKed and retried while downlink
+            group traffic is not. Whether the driver actually exploits
+            that is what this mode exists to measure. Pair with
+            CONFIG_AVB_BRIDGE_PERF_TEST_RX_MODE on the bridge.
+
+    config AVB_ENDPOINT_PERF_TEST_FIX_RATE
+        int "Force a fixed PHY rate for TX (-1 = driver rate control)"
+        default -1
+        range -1 255
+        depends on AVB_ENDPOINT_PERF_TEST_TX_MODE
+        help
+            Value is a wifi_phy_rate_t, passed to
+            esp_wifi_internal_set_fix_rate(). -1 leaves the driver's own
+            rate control in charge.
+
+            Exists to test whether the driver's group-addressed TX
+            throttle is rate selection rather than queueing: group
+            addressed frames are conventionally sent at a basic rate,
+            and 234 B at 1 Mbps is ~1.9 ms, i.e. a ceiling near 500 pps,
+            which is the order actually measured. Forcing e.g. 0x17
+            (MCS7, long GI, 65 Mbps HT20) separates the two causes.
+
+            Note esp_wifi_internal_set_fix_rate returns
+            ESP_ERR_NOT_SUPPORTED while TX AMPDU is enabled, so pair
+            this with CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n, and note the
+            fixed rate applies to ALL frames on the interface, not just
+            group addressed ones.
+
+    config AVB_ENDPOINT_PERF_TEST_TX_PAYLOAD_BYTES
+        int "TX payload bytes after the 24-byte AVTP header"
+        default 192
+        range 0 1400
+        depends on AVB_ENDPOINT_PERF_TEST_TX_MODE
+        help
+            Matches the bridge's PAYLOAD_BYTES default so uplink and
+            downlink numbers are directly comparable.
+
+    config AVB_ENDPOINT_PERF_TEST_TX_INTERVAL_US
+        int "TX inter-packet interval microseconds (0 = back-to-back)"
+        default 0
+        range 0 1000000
+        depends on AVB_ENDPOINT_PERF_TEST_TX_MODE
+
+    config AVB_ENDPOINT_PERF_TEST_TX_DURATION_SEC
+        int "TX duration seconds (0 = run forever)"
+        default 30
+        range 0 86400
+        depends on AVB_ENDPOINT_PERF_TEST_TX_MODE
+
     config AVB_ENDPOINT_PERF_TEST_DURATION_SEC
         int "Test duration seconds (0 = run forever)"
         default 10

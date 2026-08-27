@@ -20,6 +20,7 @@
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_netif.h>
+#include <esp_rom_sys.h>
 #include <esp_timer.h>
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
@@ -37,6 +38,11 @@ static const char *TAG = "perf_rx";
 extern esp_err_t esp_wifi_internal_reg_rxcb(
     int wifi_if, esp_err_t (*fn)(void *buffer, uint16_t len, void *eb));
 extern esp_err_t esp_wifi_internal_free_rx_buffer(void *eb);
+#ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE
+/* Same forward-decl pattern for the TX direction. */
+extern esp_err_t esp_wifi_internal_tx(int wifi_if, void *buffer, size_t len);
+extern esp_err_t esp_wifi_internal_set_fix_rate(int ifx, bool en, int rate);
+#endif
 
 #define PERF_AP_SSID "ESP-AVB-Bridge"
 
@@ -148,6 +154,103 @@ static esp_err_t perf_rx_cb(void *buffer, uint16_t len, void *eb) {
   return ESP_OK;
 }
 
+#ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE
+/* ---- Uplink (STA -> AP) transmit role -------------------------------
+ * Mirror of the bridge's perf_tx_task so uplink and downlink are measured
+ * over the same esp_wifi_internal_tx path with the same frame shape. The
+ * only differences are the interface (WIFI_IF_STA) and that the source MAC
+ * is this STA's own address. */
+static volatile uint64_t s_tx_pkts = 0;
+static volatile uint64_t s_tx_bytes_l2 = 0;
+static volatile uint64_t s_tx_fail = 0;
+static volatile uint64_t s_tx_busy = 0;
+static volatile bool     s_tx_done = false;
+static volatile int64_t  s_tx_start_us = 0, s_tx_end_us = 0;
+
+#define PERF_TX_MAX_PAYLOAD 1400
+
+static void build_frame(uint8_t *frame, int *frame_len,
+                        const uint8_t src_mac[6]) {
+  int payload_bytes = CONFIG_AVB_ENDPOINT_PERF_TEST_TX_PAYLOAD_BYTES;
+  if (payload_bytes > PERF_TX_MAX_PAYLOAD) payload_bytes = PERF_TX_MAX_PAYLOAD;
+  int total = ETH_HDR_LEN + VLAN_TAG_LEN + AVTP_HDR_LEN + payload_bytes;
+  *frame_len = total;
+  memset(frame, 0, total);
+
+  memcpy(frame + 0, s_match_dest_mac, 6);
+  memcpy(frame + 6, src_mac, 6);
+  frame[12] = 0x81; frame[13] = 0x00;
+  uint16_t tci = (3u << 13) | (2u & 0x0fffu); /* PCP=3, VID=2 */
+  frame[14] = (uint8_t)(tci >> 8);
+  frame[15] = (uint8_t)(tci & 0xff);
+  frame[16] = 0x22; frame[17] = 0xf0;
+
+  uint8_t *avtp = frame + ETH_HDR_LEN + VLAN_TAG_LEN;
+  avtp[0] = 0x02;            /* subtype AAF */
+  avtp[1] = 0x81;            /* sv=1, tv=1 */
+  avtp[2] = 0;               /* sequence number, bumped per packet */
+  avtp[3] = 0x00;
+  memcpy(avtp + 4, s_match_stream_id, 8);
+  avtp[16] = 0x04;
+  avtp[17] = (4u << 4);
+  avtp[18] = 8;
+  avtp[19] = 24;
+  avtp[20] = (uint8_t)((payload_bytes >> 8) & 0xff);
+  avtp[21] = (uint8_t)(payload_bytes & 0xff);
+}
+
+static void perf_tx_task(void *arg) {
+  (void)arg;
+  static uint8_t frame[ETH_HDR_LEN + VLAN_TAG_LEN + AVTP_HDR_LEN +
+                       PERF_TX_MAX_PAYLOAD];
+  uint8_t src_mac[6] = {0};
+  esp_wifi_get_mac(WIFI_IF_STA, src_mac);
+  int frame_len = 0;
+  build_frame(frame, &frame_len, src_mac);
+
+  ESP_LOGI(TAG, "uplink TX: src %02x:%02x:%02x:%02x:%02x:%02x frame=%d B "
+                "interval=%d us",
+           src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4],
+           src_mac[5], frame_len,
+           (int)CONFIG_AVB_ENDPOINT_PERF_TEST_TX_INTERVAL_US);
+
+  uint32_t interval_us = CONFIG_AVB_ENDPOINT_PERF_TEST_TX_INTERVAL_US;
+  uint32_t duration_sec = CONFIG_AVB_ENDPOINT_PERF_TEST_TX_DURATION_SEC;
+  s_tx_start_us = esp_timer_get_time();
+  int64_t deadline_us = (duration_sec > 0)
+      ? s_tx_start_us + (int64_t)duration_sec * 1000000LL : 0;
+
+  uint8_t seq = 0;
+  while (deadline_us == 0 || esp_timer_get_time() < deadline_us) {
+    frame[ETH_HDR_LEN + VLAN_TAG_LEN + 2] = seq++;
+    esp_err_t r = esp_wifi_internal_tx(WIFI_IF_STA, frame, frame_len);
+    if (r == ESP_OK) {
+      s_tx_pkts++;
+      s_tx_bytes_l2 += (uint64_t)frame_len;
+    } else if (r == ESP_ERR_NO_MEM) {
+      s_tx_busy++;
+      vTaskDelay(1);
+    } else {
+      s_tx_fail++;
+      vTaskDelay(1);
+    }
+    if (interval_us > 0) esp_rom_delay_us(interval_us);
+  }
+  s_tx_end_us = esp_timer_get_time();
+  s_tx_done = true;
+
+  double run_s = (double)(s_tx_end_us - s_tx_start_us) / 1e6;
+  ESP_LOGW(TAG, "UPLINK FINAL tx run=%.2fs pkts=%llu L2_bytes=%llu "
+                "fail=%llu busy=%llu mean_pps=%.0f mean_L2=%.2fMbps",
+           run_s, (unsigned long long)s_tx_pkts,
+           (unsigned long long)s_tx_bytes_l2,
+           (unsigned long long)s_tx_fail, (unsigned long long)s_tx_busy,
+           (double)s_tx_pkts / run_s,
+           (double)(s_tx_bytes_l2 * 8ULL) / (run_s * 1e6));
+  vTaskDelete(NULL);
+}
+#endif /* CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE */
+
 static void perf_stats_task(void *arg) {
   (void)arg;
   uint64_t last_pkts = 0;
@@ -226,6 +329,17 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id,
     ESP_LOGI(TAG, "Associated. BSSID %02x:%02x:%02x:%02x:%02x:%02x ch=%u",
              e->bssid[0], e->bssid[1], e->bssid[2],
              e->bssid[3], e->bssid[4], e->bssid[5], e->channel);
+#ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE
+    /* Uplink role: start blasting once associated. One-shot — the task
+     * deletes itself at the end of its run. */
+    {
+      static bool tx_started = false;
+      if (!tx_started) {
+        tx_started = true;
+        xTaskCreate(perf_tx_task, "perf_tx", 4096, NULL, 5, NULL);
+      }
+    }
+#else
     /* Register the AVTP RX hook now that the STA interface is up.
      * Idempotent — last writer wins per IDF docs. */
     esp_err_t r = esp_wifi_internal_reg_rxcb(WIFI_IF_STA, perf_rx_cb);
@@ -234,6 +348,7 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id,
     } else {
       ESP_LOGI(TAG, "AVTP RX hook registered on WIFI_IF_STA");
     }
+#endif
     xEventGroupSetBits(s_wifi_events, BIT_STA_CONNECTED);
     break;
   }
@@ -303,5 +418,13 @@ void avb_endpoint_perf_test_run(void) {
                                              &on_wifi_event, NULL));
   ESP_ERROR_CHECK(esp_wifi_start());
 
+#ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE
+  if (CONFIG_AVB_ENDPOINT_PERF_TEST_FIX_RATE >= 0) {
+    esp_err_t fr = esp_wifi_internal_set_fix_rate(
+        WIFI_IF_STA, true, CONFIG_AVB_ENDPOINT_PERF_TEST_FIX_RATE);
+    ESP_LOGW(TAG, "fix_rate(0x%02x) -> %s",
+             CONFIG_AVB_ENDPOINT_PERF_TEST_FIX_RATE, esp_err_to_name(fr));
+  }
+#endif
   xTaskCreate(perf_stats_task, "perf_stats", 4096, NULL, 5, NULL);
 }
