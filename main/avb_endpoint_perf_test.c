@@ -330,7 +330,7 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id,
              e->bssid[0], e->bssid[1], e->bssid[2],
              e->bssid[3], e->bssid[4], e->bssid[5], e->channel);
 #ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_TX_MODE
-    /* Uplink role: start blasting once associated. One-shot — the task
+    /* Uplink role: start blasting once associated. One-shot, the task
      * deletes itself at the end of its run. */
     {
       static bool tx_started = false;
