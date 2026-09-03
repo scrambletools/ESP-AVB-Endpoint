@@ -277,16 +277,21 @@ menu "AVB Example Configuration"
             modules use 0x3C, some 0x3D.
 
     choice EXAMPLE_AVB_OLED_GEOMETRY
-        prompt "OLED panel geometry"
-        default EXAMPLE_AVB_OLED_128X64
+        prompt "OLED panel resolution"
+        default EXAMPLE_AVB_OLED_64X32
         depends on EXAMPLE_AVB_OLED_DISPLAY
+        help
+            Resolution of the SSD1306 panel. The 0.49 inch 64x32 module
+            is the fitted default; 128x64 and 128x32 panels are also
+            supported (the code maps the panel into the controller's
+            128x64 RAM window).
 
+        config EXAMPLE_AVB_OLED_64X32
+            bool "64x32 (0.49 inch module, default)"
         config EXAMPLE_AVB_OLED_128X64
             bool "128x64"
         config EXAMPLE_AVB_OLED_128X32
             bool "128x32"
-        config EXAMPLE_AVB_OLED_64X32
-            bool "64x32 (0.49 inch module)"
     endchoice
 
 endmenu
