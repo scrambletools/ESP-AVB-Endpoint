@@ -257,4 +257,36 @@ menu "AVB Example Configuration"
             stack stays up so re-running the bridge side just needs a
             board reset on the bridge.
 
+    config EXAMPLE_AVB_OLED_DISPLAY
+        bool "Status OLED display (SSD1306 on the codec I2C bus)"
+        default n
+        help
+            Drive a small SSD1306 OLED as a stream-status indicator.
+            Idle, it shows the last two octets of the endpoint MAC
+            (e.g. 92:20). When input streams are active it shows IN,
+            when output streams are active OUT, and IN OUT when both
+            are. The panel shares the codec I2C bus; units without a
+            panel fitted skip the feature at the address probe.
+
+    config EXAMPLE_AVB_OLED_I2C_ADDR
+        hex "OLED I2C address"
+        default 0x3C
+        depends on EXAMPLE_AVB_OLED_DISPLAY
+        help
+            7-bit I2C address of the SSD1306 controller. Common
+            modules use 0x3C, some 0x3D.
+
+    choice EXAMPLE_AVB_OLED_GEOMETRY
+        prompt "OLED panel geometry"
+        default EXAMPLE_AVB_OLED_128X64
+        depends on EXAMPLE_AVB_OLED_DISPLAY
+
+        config EXAMPLE_AVB_OLED_128X64
+            bool "128x64"
+        config EXAMPLE_AVB_OLED_128X32
+            bool "128x32"
+        config EXAMPLE_AVB_OLED_64X32
+            bool "64x32 (0.49 inch module)"
+    endchoice
+
 endmenu

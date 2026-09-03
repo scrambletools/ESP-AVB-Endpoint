@@ -62,6 +62,10 @@
 #include "nvs_flash.h"
 #endif
 
+#ifdef CONFIG_EXAMPLE_AVB_OLED_DISPLAY
+#include "avb_endpoint_oled.h"
+#endif
+
 static const char *TAG = "avb_endpoint";
 
 /* ETHERNET medium (PORT0) */
@@ -429,6 +433,12 @@ void app_main(void) {
 #if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
     defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
   start_wifi_endpoint();
+#endif
+
+#ifdef CONFIG_EXAMPLE_AVB_OLED_DISPLAY
+  /* Medium-agnostic: the task waits for the codec I2C bus that
+   * avb_start() creates, then probes for the panel. */
+  avb_endpoint_oled_start();
 #endif
 
 #ifdef CONFIG_HEAP_TRACING_STANDALONE

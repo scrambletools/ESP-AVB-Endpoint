@@ -1,5 +1,10 @@
 set(srcs "avb_endpoint.c")
 
+# Status OLED is optional hardware; compile it only when selected.
+if(CONFIG_EXAMPLE_AVB_OLED_DISPLAY)
+    list(APPEND srcs "avb_endpoint_oled.c")
+endif()
+
 # Perf-test mode adds a separate translation unit that runs in place of
 # the production bring-up. Gated on the WiFi-capable target since the
 # RX hook only makes sense on the STA build.
