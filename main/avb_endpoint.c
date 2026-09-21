@@ -506,7 +506,7 @@ void app_main(void) {
      * watchdogs below. */
     if (++hb_count >= 60) {
       hb_count = 0;
-      ESP_LOGI(TAG, "heartbeat");
+      ESP_LOGD(TAG, "heartbeat");
     }
 
 #if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
