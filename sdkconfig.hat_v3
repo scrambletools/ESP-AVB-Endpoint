@@ -1501,7 +1501,20 @@ CONFIG_ESP_PTP_PORT0_HOST_IF_EMAC=y
 CONFIG_ESP_PTP_PORT0_TYPE_PRIMARY=y
 # default:
 CONFIG_ESP_PTP_PORT0_LINK_SPEED_MBPS=1000
+# default:
+# CONFIG_ESP_PTP_PEER_LOSS_TEST is not set
 # end of PTP Daemon Configuration
+
+# default:
+# CONFIG_ESP_PTP_INTERVAL_PROBE is not set
+# default:
+# CONFIG_ESP_PTP_CAPABLE_TX_TRACE is not set
+# default:
+# CONFIG_ESP_PTP_CAPABLE_RX_TRACE is not set
+# default:
+# CONFIG_ESP_PTP_SOURCE_LOSS_PROBE is not set
+# default:
+# CONFIG_ESP_PTP_ANNOUNCE_PATH_PROBE is not set
 
 #
 # Ethernet Configuration
