@@ -118,6 +118,9 @@ static void init_ethernet_and_netif(void) {
          strlen(esp_netif_base_config.if_key));
   ESP_LOGI(TAG, "AVB ethernet interface: %s", s_avb_eth_interface);
 
+  /* AVB Lite endpoint link: no EEE, no PAUSE, from the first
+   * negotiation on. */
+  avb_eth_apply_link_policy(s_eth_handle, false);
   ESP_ERROR_CHECK(esp_eth_start(s_eth_handle));
 }
 
