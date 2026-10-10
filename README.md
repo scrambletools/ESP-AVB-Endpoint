@@ -10,6 +10,13 @@ Builds for two targets:
   ESP-AVB-Bridge that bridges AVB Wi-Fi onto a wired AVB
   switch.
 
+The source lives at <https://github.com/scrambletoolsllc/ESP-AVB-Endpoint>;
+old github.com/scrambletools/... links redirect there. The esp_avb,
+esp_ptp and esp_ptp_rpc components come from the ESP Component
+Registry under the **scrambletools** namespace
+(`scrambletools/esp_avb`, `scrambletools/esp_ptp`,
+`scrambletools/esp_ptp_rpc`), declared in `main/idf_component.yml`.
+
 Hardware:
 
 - **Wired endpoint (ESP32-P4):** Scramble offers developer hardware
