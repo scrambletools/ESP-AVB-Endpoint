@@ -4,6 +4,6 @@ dependencies:
     version: "~1.3.0"
     rules:
       - if: "target in [esp32p4]"
-  scrambletoolsllc/esp_ptp: "*"
-  scrambletoolsllc/esp_ptp_rpc: "*"
-  scrambletoolsllc/esp_avb: "*"
+  scrambletools/esp_ptp: "*"
+  scrambletools/esp_ptp_rpc: "*"
+  scrambletools/esp_avb: "*"
