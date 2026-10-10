@@ -17,7 +17,7 @@ Hardware:
   get a Waveshare ESP32-P4-ETH from other vendors and flash it
   yourself.
 - **Wireless endpoint (ESP32-C6):** any ESP32-C6 dev board. Pair it
-  with an ESP-AVB-Bridge (see scrambletools/ESP-AVB-Bridge) to reach
+  with an ESP-AVB-Bridge (see scrambletoolsllc/ESP-AVB-Bridge) to reach
   the wired AVB network. Codec/I2S can be left disabled for boards
   with no audio hardware (the c6 default in `sdkconfig.defaults.esp32c6`
   builds without codec for that reason).
@@ -106,7 +106,7 @@ controller, and the Apple ATDECC controller (built into MacOS).
   arrives out-of-band: 802.11 beacon Vendor IE for FollowUpInformation
   and FTM for peer-delay. The wireless endpoint requires an AVB bridge
   to terminate Wi-Fi AVB onto a wired AVB switch — see
-  scrambletools/ESP-AVB-Bridge.
+  scrambletoolsllc/ESP-AVB-Bridge.
 
 Compatibility testing has been performed with the MOTU AVB Switch, the
 MOTU 8D audio interface, and the Apple virtual AVB endpoint device
