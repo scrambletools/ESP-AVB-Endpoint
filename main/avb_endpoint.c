@@ -380,6 +380,9 @@ static void start_wifi_endpoint(void) {
   avb_config.atdecc_control = CONFIG_EXAMPLE_AVB_REMOTE_CONTROL;
   avb_config.eth_handle = NULL;
   avb_config.eth_interface = "WIFI_STA_DEF";
+#ifdef CONFIG_EXAMPLE_AVB_CODEC_DISABLED
+  avb_config.codec_disabled = true;
+#endif
   /* C6 test board's onboard ES8311 (per avbconfig.h comment block).
    * Default codec pins (12/13 = MCLK/BCLK) collide with C6 USB-Serial-
    * JTAG (D+/D-), so we override to the C6 board's actual ES8311
