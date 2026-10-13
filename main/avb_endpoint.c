@@ -390,8 +390,10 @@ static void start_wifi_endpoint(void) {
   avb_config.codec_pins.mclk = 19;
   avb_config.codec_pins.bclk = 20;
   avb_config.codec_pins.ws = 22;
-  avb_config.codec_pins.dout = 21;
-  avb_config.codec_pins.din = 23;
+  /* ESP data out drives the ES8311 DSDIN (GPIO23), ESP data in reads
+   * its ASDOUT (GPIO21), per the ESP32-C6-Touch-AMOLED-2.06 schematic. */
+  avb_config.codec_pins.dout = 23;
+  avb_config.codec_pins.din = 21;
   avb_config.codec_pins.i2c_sda = 8;
   avb_config.codec_pins.i2c_scl = 7;
   avb_config.codec_pins.pa = 6;
