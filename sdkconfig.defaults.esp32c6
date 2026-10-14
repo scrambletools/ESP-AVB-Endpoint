@@ -16,11 +16,6 @@ CONFIG_ESP_PTP_PORT0_TYPE_PRIMARY=y
 CONFIG_ESP_PTP_PORT0_WIFI_MODE_STA=y
 CONFIG_ESP_PTP_PORT0_LINK_SPEED_MBPS=150
 
-# Disable listener fast-connect on this build — it interferes with the
-# Phase 3 class-selection demo by re-binding with default (Class A) flags
-# within milliseconds of any controller-driven disconnect. Test-only.
-CONFIG_ESP_AVB_DISABLE_FAST_CONNECT=y
-
 # A station talker sends its stream to the bridge several frames to a
 # Wi-Fi frame; the bridge must run the same esp_avb.
 CONFIG_ESP_AVB_WIFI_BUNDLE=y
