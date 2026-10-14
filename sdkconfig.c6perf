@@ -4026,11 +4026,11 @@ CONFIG_WL_SECTOR_SIZE=4096
 # end of Wear Levelling
 
 #
-# ESP-PTP RPC
+# ESP-Hosted AVB
 #
 # default:
-# CONFIG_PTP_RPC_BUILD_COPROCESSOR_HANDLER is not set
-# end of ESP-PTP RPC
+# CONFIG_HOSTED_AVB_BUILD_COPROCESSOR_HANDLER is not set
+# end of ESP-Hosted AVB
 
 #
 # Audio Codec Device Configuration

@@ -5,5 +5,5 @@ dependencies:
     rules:
       - if: "target in [esp32p4]"
   scrambletools/esp_ptp: "*"
-  scrambletools/esp_ptp_rpc: "*"
+  scrambletools/esp_hosted_avb: "*"
   scrambletools/esp_avb: "*"
