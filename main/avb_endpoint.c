@@ -330,6 +330,11 @@ static void wifi_sta_init(void) {
   };
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
+  /* No 802.11b rates: management frames and rate fallback stay on OFDM. */
+  esp_err_t rate_err = esp_wifi_config_11b_rate(WIFI_IF_STA, true);
+  if (rate_err != ESP_OK)
+    ESP_LOGW(TAG, "esp_wifi_config_11b_rate failed (%s)",
+             esp_err_to_name(rate_err));
 
   ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                              &on_wifi_event, NULL));
