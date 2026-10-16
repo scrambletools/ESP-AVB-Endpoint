@@ -32,6 +32,13 @@
 #include <esp_log.h>
 #include <esp_timer.h>
 #include <string.h>
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+#include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
+#elif CONFIG_ESP_CONSOLE_UART
+#include "driver/uart.h"
+#include "driver/uart_vfs.h"
+#endif
 /* esp_ptp public API and internal wire-format types. Both used in
  * either-medium builds: the public API for ptpd_start_port etc., the
  * internal types for the §12.7 Vendor IE parser. esp_ptp's
@@ -429,7 +436,31 @@ void avb_endpoint_heap_trace_stop(void *arg) {
 }
 #endif
 
+/* Console writes go through the port's driver: a log call copies into
+ * the TX buffer and returns while an interrupt feeds the port. Without
+ * the driver the caller spins until the last character is out, about
+ * 35 ms for a 400-character line at 115200 baud, and every task below
+ * it waits, the single-core talker first. */
+#define CONSOLE_TX_BUFFER_BYTES 8192
+
+static void console_use_driver(void) {
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+  usb_serial_jtag_driver_config_t config =
+      USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
+  config.tx_buffer_size = CONSOLE_TX_BUFFER_BYTES;
+  if (usb_serial_jtag_driver_install(&config) == ESP_OK)
+    usb_serial_jtag_vfs_use_driver();
+#elif CONFIG_ESP_CONSOLE_UART
+  if (uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM,
+                          2 * UART_HW_FIFO_LEN(CONFIG_ESP_CONSOLE_UART_NUM),
+                          CONSOLE_TX_BUFFER_BYTES, 0, NULL, 0) == ESP_OK)
+    uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+#endif
+}
+
 void app_main(void) {
+  console_use_driver();
+
 #ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_MODE
   /* Perf-test mode bypasses every production subsystem. Brings up only
    * NVS + WiFi STA and counts matching AVTP frames via an

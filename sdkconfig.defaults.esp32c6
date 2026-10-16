@@ -31,6 +31,12 @@ CONFIG_ESP_WIFI_FTM_RESPONDER_SUPPORT=y
 CONFIG_ESP_WIFI_SOFTAP_SUPPORT=n
 CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
 
+# The console is the USB Serial/JTAG port, the one a host reads. Also
+# writing every line to the UART at 115200 baud held the logging task
+# for tens of ms per burst.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
 # Wider RX BA window so the wireless listener can accept large A-MPDU
 # aggregates from the bridge AP (C6 supports HE; range is 2..64). The
 # default of 6 caps the negotiated BA window even when the AP offers
