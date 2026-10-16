@@ -82,3 +82,8 @@ CONFIG_ETH_DMA_BUFFER_SIZE=1536
 # 96 kHz listeners) when the once-per-second control burst lands on a
 # stream TX slot — measured ~1 lost frame copy per second at fan-out 3.
 CONFIG_ETH_DMA_TX_BUFFER_NUM=24
+
+# Conceal lost audio by repeating the last pitch period with a fade and
+# a crossfade back, instead of inserting silence: splice steps on a tone
+# fell by 16 to 19 dB.
+CONFIG_ESP_AVB_LISTENER_CONCEAL_REPEAT=y
