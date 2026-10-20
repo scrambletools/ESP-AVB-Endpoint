@@ -38,6 +38,9 @@
 #elif CONFIG_ESP_CONSOLE_UART
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
+#include "freertos/semphr.h"
+#include <stdarg.h>
+#include <stdio.h>
 #endif
 /* esp_ptp public API and internal wire-format types. Both used in
  * either-medium builds: the public API for ptpd_start_port etc., the
@@ -443,6 +446,33 @@ void avb_endpoint_heap_trace_stop(void *arg) {
  * it waits, the single-core talker first. */
 #define CONSOLE_TX_BUFFER_BYTES 8192
 
+#if CONFIG_ESP_CONSOLE_UART
+/* Log lines reach the UART driver as one write each. Through stdio it
+ * gets one character at a time, two ring-buffer items each, and its
+ * interrupt then spends hundreds of microseconds per FIFO refill at the
+ * level of the I2S DMA interrupts on core 0: the 10 s stats lines made
+ * I2S miss buffer completions and the audio slip 8 frames. ESP_LOG skips
+ * the secondary USB Serial/JTAG console; printf still uses stdio. */
+#define CONSOLE_LINE_BYTES 1024
+
+static SemaphoreHandle_t s_console_line_lock;
+
+static int console_write_line(const char *format, va_list args) {
+  static char line[CONSOLE_LINE_BYTES];
+  xSemaphoreTake(s_console_line_lock, portMAX_DELAY);
+  int length = vsnprintf(line, sizeof(line), format, args);
+  if (length >= (int)sizeof(line)) {
+    /* Cut, but keep the line ending so the next line starts clean. */
+    length = sizeof(line) - 1;
+    line[length - 1] = '\n';
+  }
+  if (length > 0)
+    uart_write_bytes(CONFIG_ESP_CONSOLE_UART_NUM, line, length);
+  xSemaphoreGive(s_console_line_lock);
+  return length;
+}
+#endif
+
 static void console_use_driver(void) {
 #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
   usb_serial_jtag_driver_config_t config =
@@ -453,8 +483,12 @@ static void console_use_driver(void) {
 #elif CONFIG_ESP_CONSOLE_UART
   if (uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM,
                           2 * UART_HW_FIFO_LEN(CONFIG_ESP_CONSOLE_UART_NUM),
-                          CONSOLE_TX_BUFFER_BYTES, 0, NULL, 0) == ESP_OK)
-    uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+                          CONSOLE_TX_BUFFER_BYTES, 0, NULL, 0) != ESP_OK)
+    return;
+  uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+  s_console_line_lock = xSemaphoreCreateMutex();
+  if (s_console_line_lock)
+    esp_log_set_vprintf(console_write_line);
 #endif
 }
 
