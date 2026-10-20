@@ -87,3 +87,9 @@ CONFIG_ETH_DMA_TX_BUFFER_NUM=24
 # a crossfade back, instead of inserting silence: splice steps on a tone
 # fell by 16 to 19 dB.
 CONFIG_ESP_AVB_LISTENER_CONCEAL_REPEAT=y
+
+# Console UART0 at 921600 so log bursts drain 8 times faster (the C6
+# uses USB Serial/JTAG and ignores this). Serial monitors must open the
+# port at 921600.
+CONFIG_ESP_CONSOLE_UART_CUSTOM=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600
