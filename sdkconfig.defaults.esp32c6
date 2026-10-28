@@ -41,11 +41,14 @@ CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 # aggregates from the bridge AP (C6 supports HE; range is 2..64). The
 # default of 6 caps the negotiated BA window even when the AP offers
 # more, since 802.11 uses min(tx_ba_win, rx_ba_win) per direction.
-CONFIG_ESP_WIFI_RX_BA_WIN=64
+# 32 bundles is about 64 ms of a station's stream. A window of 64 took
+# 32 static RX buffers, about 51 KB of heap from boot, and a station
+# streaming both ways then ran out of heap for received frames.
+CONFIG_ESP_WIFI_RX_BA_WIN=32
 # Required by IDF's WIFI_RX_BA_WIN size check: WIN <= DYNAMIC_RX_BUFFER_NUM
 # AND WIN <= 2 * STATIC_RX_BUFFER_NUM.
-CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=32
-CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
 
 # Heap-trace is off by default. The scaffold in avb_endpoint.c
 # (#ifdef CONFIG_HEAP_TRACING_STANDALONE) and the heap-watcher log in
