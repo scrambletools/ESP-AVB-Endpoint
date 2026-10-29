@@ -505,6 +505,10 @@ void app_main(void) {
   return;
 #endif
 
+  /* The Scramble Tools MA-S address, before any interface reads one:
+   * entity, stream and clock IDs all come from it. */
+  avb_registry_apply_base_mac();
+
 #ifdef CONFIG_ESP_PTP_PORT0_MEDIUM_ETH_HWTS
   start_ethernet_endpoint();
 #endif
