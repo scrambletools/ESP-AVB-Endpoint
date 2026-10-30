@@ -107,6 +107,14 @@ controller, and the Apple ATDECC controller (built into MacOS).
   it has the on-chip IEEE 1588 hardware timestamping; older ESP32 SoCs
   with EMAC do not support hardware timestamping and will not meet the
   AVB sync precision requirements.
+- **ESP32-P4 flash:** the P4 defaults turn on flash auto-suspend
+  (`CONFIG_SPI_FLASH_AUTO_SUSPEND`), so a settings write no longer
+  stops the caches and drops received audio. `main/flash_chips.c` adds
+  the driver for the Waveshare board's GD25Q256. On a board whose flash
+  cannot suspend, the app stops at boot with "Suspend and resume may
+  not supported for this flash model yet"; set
+  `CONFIG_SPI_FLASH_AUTO_SUSPEND` and
+  `CONFIG_SPI_FLASH_OVERRIDE_CHIP_DRIVER_LIST` to n for that board.
 - **ESP32-C6 wireless endpoint:** tested on a generic ESP32-C6 dev
   board. The c6 has no on-chip MAC, so the PTP daemon disciplines a
   software clock backed by `esp_timer` (`ptp_clock_sw.c`). Time sync

@@ -1,5 +1,10 @@
 set(srcs "avb_endpoint.c")
 
+# The P4 boards' flash needs its own chip driver for auto-suspend.
+if(CONFIG_SPI_FLASH_OVERRIDE_CHIP_DRIVER_LIST)
+    list(APPEND srcs "flash_chips.c")
+endif()
+
 # Status OLED is optional hardware; compile it only when selected.
 if(CONFIG_EXAMPLE_AVB_OLED_DISPLAY)
     list(APPEND srcs "avb_endpoint_oled.c")
@@ -27,5 +32,5 @@ if(IDF_TARGET STREQUAL "esp32c6")
                                          esp_driver_usb_serial_jtag
                                          esp_driver_uart)
 else()
-    idf_component_register(SRCS ${srcs})
+    idf_component_register(SRCS ${srcs} LDFRAGMENTS linker.lf)
 endif()

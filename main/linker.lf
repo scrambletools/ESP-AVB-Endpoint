@@ -1,0 +1,6 @@
+# The flash chip drivers run while the flash is busy (flash_chips.c).
+[mapping:avb_endpoint_flash_chips]
+archive: libmain.a
+entries:
+    if SPI_FLASH_OVERRIDE_CHIP_DRIVER_LIST = y:
+        flash_chips (noflash)

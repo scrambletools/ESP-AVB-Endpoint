@@ -60,3 +60,8 @@ CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
 # in the active sdkconfig (not just defaults).
 CONFIG_HEAP_TRACING_OFF=y
 # CONFIG_HEAP_TRACING_STANDALONE is not set
+
+# Flash auto-suspend stays off: ESP-IDF drives the C6 boards' flash with
+# its generic driver, which cannot suspend.
+# CONFIG_SPI_FLASH_AUTO_SUSPEND is not set
+# CONFIG_SPI_FLASH_OVERRIDE_CHIP_DRIVER_LIST is not set
