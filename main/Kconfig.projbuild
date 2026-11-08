@@ -301,4 +301,24 @@ menu "AVB Example Configuration"
             bool "128x32"
     endchoice
 
+    config EXAMPLE_AVB_WIFI_SSID
+        string "Wi-Fi network a station joins"
+        default "ESP-AVB-Bridge"
+        depends on ESP_PTP_PORT0_MEDIUM_WIFI_FTM || ESP_PTP_PORT1_MEDIUM_WIFI_FTM
+        help
+            SSID of the access point a Wi-Fi station associates to. The
+            default is the AVB bridge's SoftAP. The station matches the
+            SSID only, so two access points advertising it are
+            interchangeable to it.
+
+    config EXAMPLE_AVB_WIFI_PASSWORD
+        string "Wi-Fi network password"
+        default ""
+        depends on ESP_PTP_PORT0_MEDIUM_WIFI_FTM || ESP_PTP_PORT1_MEDIUM_WIFI_FTM
+        help
+            Empty joins an open network. Otherwise the station accepts
+            WPA2-PSK or WPA3-SAE (either SAE password element method),
+            with protected management frames when the access point
+            offers them.
+
 endmenu

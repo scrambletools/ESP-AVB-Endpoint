@@ -214,7 +214,7 @@ static void start_ethernet_endpoint(void) {
 #if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
     defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
 
-#define AVB_AP_SSID "ESP-AVB-Bridge"
+#define AVB_AP_SSID CONFIG_EXAMPLE_AVB_WIFI_SSID
 
 static EventGroupHandle_t s_wifi_events;
 #define BIT_STA_CONNECTED BIT0
@@ -334,10 +334,16 @@ static void wifi_sta_init(void) {
       .sta =
           {
               .ssid = AVB_AP_SSID,
-              .password = "",
+              .password = CONFIG_EXAMPLE_AVB_WIFI_PASSWORD,
               .threshold.authmode = WIFI_AUTH_OPEN,
           },
   };
+  /* With a password, WPA2-PSK is the floor, so WPA3-SAE is taken when
+   * offered; PMF follows the access point. */
+  if (sta_cfg.sta.password[0] != '\0') {
+    sta_cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    sta_cfg.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
+  }
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_cfg));
   /* No 802.11b rates: management frames and rate fallback stay on OFDM. */
