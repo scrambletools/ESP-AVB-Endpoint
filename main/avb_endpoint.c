@@ -515,6 +515,12 @@ void app_main(void) {
    * entity, stream and clock IDs all come from it. */
   avb_registry_apply_base_mac();
 
+#ifdef CONFIG_EXAMPLE_AVB_AEC
+  /* Before the talker can call its capture hook. */
+  extern void avb_aec_start(void);
+  avb_aec_start();
+#endif
+
 #ifdef CONFIG_ESP_PTP_PORT0_MEDIUM_ETH_HWTS
   start_ethernet_endpoint();
 #endif

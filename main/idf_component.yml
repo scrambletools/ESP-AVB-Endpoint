@@ -7,3 +7,7 @@ dependencies:
   scrambletools/esp_ptp: "*"
   scrambletools/esp_hosted_avb: "*"
   scrambletools/esp_avb: "*"
+  espressif/esp-sr:
+    version: "2.6.2"
+    rules:
+      - if: "target in [esp32p4]"

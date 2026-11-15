@@ -10,6 +10,11 @@ if(CONFIG_EXAMPLE_AVB_OLED_DISPLAY)
     list(APPEND srcs "avb_endpoint_oled.c")
 endif()
 
+# Echo cancellation test path (ESP-SR), test builds only.
+if(CONFIG_EXAMPLE_AVB_AEC)
+    list(APPEND srcs "avb_aec.c")
+endif()
+
 # Perf-test mode adds a separate translation unit that runs in place of
 # the production bring-up. Gated on the WiFi-capable target since the
 # RX hook only makes sense on the STA build.

@@ -321,4 +321,66 @@ menu "AVB Example Configuration"
             with protected management frames when the access point
             offers them.
 
+    config EXAMPLE_AVB_AEC
+        bool "Echo cancellation test path (ESP-SR)"
+        default n
+        depends on ESP_AVB_TALKER_CAPTURE_HOOK && IDF_TARGET_ESP32P4
+        help
+            Test builds. Runs ESP-SR's echo canceller on the mic, with the
+            listener's playout as the reference (48 kHz streams only).
+            Talker channel 0 carries the cancelled mic and channel 1 the
+            raw mic, both delayed the same fixed amount so they stay
+            sample aligned (logged at start as "delayed N samples").
+
+    config EXAMPLE_AVB_AEC_FILTER_LENGTH
+        int "Echo canceller filter length (16 ms frames)"
+        default 4
+        range 1 8
+        depends on EXAMPLE_AVB_AEC
+        help
+            Echo tail the canceller models, in 16 ms frames. Espressif
+            recommends 4 on the P4; longer costs more CPU.
+
+    config EXAMPLE_AVB_AEC_MIC_LEAD_MS
+        int "Mic delay before the canceller (ms)"
+        default 8
+        range 0 40
+        depends on EXAMPLE_AVB_AEC
+        help
+            Holds the mic back so the reference always leads its echo
+            (the reference is taken as the listener hands samples to the
+            codec, before the DAC queue). Adds to both channels' delay.
+
+    choice EXAMPLE_AVB_AEC_MODE
+        prompt "Echo canceller mode"
+        default EXAMPLE_AVB_AEC_MODE_FD
+        depends on EXAMPLE_AVB_AEC
+
+        config EXAMPLE_AVB_AEC_MODE_FD
+            bool "Full duplex, high performance"
+        config EXAMPLE_AVB_AEC_MODE_FD_LOW
+            bool "Full duplex, low cost"
+        config EXAMPLE_AVB_AEC_MODE_VOIP
+            bool "Voice communication, high performance"
+        config EXAMPLE_AVB_AEC_MODE_VOIP_LOW
+            bool "Voice communication, low cost"
+    endchoice
+
+    config EXAMPLE_AVB_AEC_SELFTEST
+        bool "Silent self-test signal"
+        default n
+        depends on EXAMPLE_AVB_AEC
+        help
+            The canceller's reference becomes a synthetic speech-like far
+            end and a digital echo of it is added to the mic, so its CPU
+            cost and echo reduction can be measured with nothing played.
+
+    config EXAMPLE_AVB_AEC_BENCH_CYCLE
+        bool "Cycle canceller modes (benchmark)"
+        default n
+        depends on EXAMPLE_AVB_AEC_SELFTEST
+        help
+            Every 40 s switches to the next mode and filter length and
+            logs frame time and echo reduction for each.
+
 endmenu
