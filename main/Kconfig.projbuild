@@ -343,13 +343,27 @@ menu "AVB Example Configuration"
 
     config EXAMPLE_AVB_AEC_MIC_LEAD_MS
         int "Mic delay before the canceller (ms)"
-        default 8
+        default 0
         range 0 40
         depends on EXAMPLE_AVB_AEC
         help
-            Holds the mic back so the reference always leads its echo
-            (the reference is taken as the listener hands samples to the
-            codec, before the DAC queue). Adds to both channels' delay.
+            Holds the mic back so the reference leads its echo by more.
+            The reference is taken as the listener hands samples to the
+            codec, before the DAC queue and the speaker, so it already
+            leads (about 30 ms with the bench's powered speaker). Adds to
+            both channels' delay.
+
+    config EXAMPLE_AVB_AEC_HEADROOM_MS
+        int "Canceller headroom (ms)"
+        default 32
+        range 16 96
+        depends on EXAMPLE_AVB_AEC
+        help
+            Time the canceller task has, after a 32 ms frame has filled,
+            to process it and hand it to the talker. Adds to both
+            channels' delay. A frame later than this goes out as silence
+            on channel 0 and is counted as dropped. The worst frame
+            measured on the P4 with a listener running was 21 ms.
 
     choice EXAMPLE_AVB_AEC_MODE
         prompt "Echo canceller mode"

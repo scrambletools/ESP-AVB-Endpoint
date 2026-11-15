@@ -43,10 +43,9 @@ static const char *TAG = "AVB-AEC";
 #define AEC_FIR_TAPS 63 /* odd: linear phase, integer group delay */
 #define AEC_FIR_PHASE_TAPS ((AEC_FIR_TAPS + AEC_DECIM - 1) / AEC_DECIM)
 #define AEC_IN_CAP 8192  /* 48 kHz frames, power of two (~170 ms) */
-#define AEC_OUT_CAP 8192 /* 48 kHz samples, power of two */
+#define AEC_OUT_CAP 16384 /* 48 kHz samples, power of two */
 #define AEC_RAW_CAP 8192 /* raw delay line, power of two */
 #define AEC_MIC_CAP 2048 /* mic lead line, power of two */
-#define AEC_START_BLOCKS 3
 
 /* Hook -> task: mic and reference at 48 kHz. */
 typedef struct {
@@ -76,6 +75,7 @@ static uint32_t s_mic_w;
 static uint32_t s_mic_lead; /* samples the mic waits behind the reference */
 static uint32_t s_delay;    /* raw-channel delay = cleaned-channel latency */
 static uint64_t s_in_count;
+static uint32_t s_start;    /* inputs queued before the first output goes out */
 static bool s_started;
 static uint32_t s_owed;   /* outputs that will still arrive late: skip them */
 static uint32_t s_never;  /* inputs the hook dropped: their outputs never come */
@@ -438,7 +438,7 @@ IRAM_ATTR void avb_talker_capture_hook(uint8_t *capture, const uint8_t *playout,
     int32_t raw = s_raw[(s_raw_w - s_delay) & (AEC_RAW_CAP - 1)];
     s_raw_w++;
     int32_t clean = 0;
-    if (!s_started && s_in_count >= (uint64_t)AEC_START_BLOCKS * s_block)
+    if (!s_started && s_in_count >= s_start)
       s_started = true;
     s_in_count++;
     if (s_started) {
@@ -502,7 +502,7 @@ void avb_aec_start(void) {
   s_ref16 = heap_caps_aligned_alloc(16, AEC_FRAME_MAX * sizeof(int16_t), frame_caps);
   s_out16 = heap_caps_aligned_alloc(16, AEC_FRAME_MAX * sizeof(int16_t), frame_caps);
   if (!s_in || !s_out || !s_raw || !s_mic16 || !s_ref16 || !s_out16 ||
-      s_chunk > AEC_FRAME_MAX || s_block * (AEC_START_BLOCKS + 2) > AEC_OUT_CAP) {
+      s_chunk > AEC_FRAME_MAX || s_block * 6 > AEC_OUT_CAP) {
     ESP_LOGE(TAG, "no memory for the AEC buffers; capture passes through");
     return;
   }
@@ -515,7 +515,12 @@ void avb_aec_start(void) {
    * cleaned channel lagged the raw one by exactly 512 samples at 16 kHz,
    * cross-correlation on room noise), so the raw channel waits one more
    * frame. */
-  s_delay = AEC_START_BLOCKS * s_block + conv + s_mic_lead + s_block;
+  /* The first output goes out once one whole frame has been queued plus
+   * the headroom the canceller gets to deliver it: one frame to fill,
+   * then up to the headroom for the task to wake, run and hand it over.
+   * A frame later than that goes out as silence (counted as dropped). */
+  s_start = s_block + CONFIG_EXAMPLE_AVB_AEC_HEADROOM_MS * (AEC_RATE_IN / 1000);
+  s_delay = s_start + conv + s_mic_lead + s_block;
   if (s_delay >= AEC_RAW_CAP)
     s_delay = AEC_RAW_CAP - 1;
   if (xTaskCreatePinnedToCore(aec_task, "avb_aec", 6144, NULL, 5, &s_task, 0) !=
@@ -531,6 +536,6 @@ void avb_aec_start(void) {
            "%s, frame %d samples at 16 kHz; ch0 cleaned, ch1 raw; "
            "both delayed %lu samples (start %d + converters %d + mic lead %lu "
            "+ canceller frame %d)",
-           s_mode_name, s_chunk, (unsigned long)s_delay, AEC_START_BLOCKS * s_block, conv,
+           s_mode_name, s_chunk, (unsigned long)s_delay, (int)s_start, conv,
            (unsigned long)s_mic_lead, s_block);
 }
