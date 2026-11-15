@@ -7,7 +7,9 @@ dependencies:
   scrambletools/esp_ptp: "*"
   scrambletools/esp_hosted_avb: "*"
   scrambletools/esp_avb: "*"
+  # Only the echo cancellation test path (EXAMPLE_AVB_AEC) uses ESP-SR.
   espressif/esp-sr:
     version: "2.6.2"
     rules:
       - if: "target in [esp32p4]"
+      - if: "$CONFIG{EXAMPLE_AVB_AEC} == True"

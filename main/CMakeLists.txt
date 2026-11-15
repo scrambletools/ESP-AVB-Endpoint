@@ -10,8 +10,11 @@ if(CONFIG_EXAMPLE_AVB_OLED_DISPLAY)
     list(APPEND srcs "avb_endpoint_oled.c")
 endif()
 
-# Echo cancellation test path (ESP-SR), test builds only.
+# Echo cancellation (ESP-SR), optional; ESP-SR is fetched only with it.
 if(CONFIG_EXAMPLE_AVB_AEC)
+    if(NOT IDF_TARGET STREQUAL "esp32p4")
+        message(FATAL_ERROR "EXAMPLE_AVB_AEC needs the ESP32-P4")
+    endif()
     list(APPEND srcs "avb_aec.c")
 endif()
 

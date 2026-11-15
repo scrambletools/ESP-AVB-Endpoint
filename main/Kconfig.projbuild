@@ -322,15 +322,20 @@ menu "AVB Example Configuration"
             offers them.
 
     config EXAMPLE_AVB_AEC
-        bool "Echo cancellation test path (ESP-SR)"
+        bool "Echo cancellation (ESP-SR; ESP32-P4 with PSRAM)"
         default n
-        depends on ESP_AVB_TALKER_CAPTURE_HOOK && IDF_TARGET_ESP32P4
+        select ESP_AVB_LISTENER_MIRROR
+        select ESP_AVB_TALKER_RESAMPLE
+        select ESP_AVB_TALKER_CAPTURE_HOOK
         help
-            Test builds. Runs ESP-SR's echo canceller on the mic, with the
-            listener's playout as the reference (48 kHz streams only).
-            Talker channel 0 carries the cancelled mic and channel 1 the
-            raw mic, both delayed the same fixed amount so they stay
-            sample aligned (logged at start as "delayed N samples").
+            Runs ESP-SR's echo canceller on the mic, with the listener's
+            playout as the reference (48 kHz streams only). Talker
+            channel 0 carries the cancelled mic and channel 1 the raw
+            mic, both delayed the same fixed amount so they stay sample
+            aligned (logged at start as "delayed N samples").
+            ESP32-P4 only, and the canceller allocates from PSRAM (enable
+            SPIRAM; caps-only allocation is enough). The option exists on
+            every target because the esp-sr dependency is keyed on it.
 
     config EXAMPLE_AVB_AEC_FILTER_LENGTH
         int "Echo canceller filter length (16 ms frames)"
