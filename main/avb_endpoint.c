@@ -477,6 +477,14 @@ static int console_write_line(const char *format, va_list args) {
   xSemaphoreGive(s_console_line_lock);
   return length;
 }
+
+/* The same write for a line esp_avb has already formatted (it keeps the
+ * log for ATDECC controllers too), so each line is formatted once. */
+static void console_put_line(const char *line, int length) {
+  xSemaphoreTake(s_console_line_lock, portMAX_DELAY);
+  uart_write_bytes(CONFIG_ESP_CONSOLE_UART_NUM, line, length);
+  xSemaphoreGive(s_console_line_lock);
+}
 #endif
 
 static void console_use_driver(void) {
@@ -500,6 +508,13 @@ static void console_use_driver(void) {
 
 void app_main(void) {
   console_use_driver();
+  /* Keep the console log for ATDECC controllers from the first line on
+   * (CONFIG_ESP_AVB_LOG_OBJECT; a no-op without it). */
+  esp_avb_log_capture_start();
+#if CONFIG_ESP_CONSOLE_UART
+  if (s_console_line_lock)
+    esp_avb_log_set_line_writer(console_put_line);
+#endif
 
 #ifdef CONFIG_AVB_ENDPOINT_PERF_TEST_MODE
   /* Perf-test mode bypasses every production subsystem. Brings up only
