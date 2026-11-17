@@ -529,6 +529,10 @@ void avb_aec_start(void) {
     return;
   }
   s_ready = true;
+  /* The hook's queues are in PSRAM, which faults while the flash is
+   * erased or written: firmware uploads over ATDECC must stop the
+   * talker first. */
+  esp_avb_fw_keep_streams_paused();
   ESP_LOGI(TAG, "after: internal %u free, PSRAM %u free",
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));

@@ -336,6 +336,12 @@ menu "AVB Example Configuration"
             ESP32-P4 only, and the canceller allocates from PSRAM (enable
             SPIRAM; caps-only allocation is enough). The option exists on
             every target because the esp-sr dependency is keyed on it.
+            The talker-side hook's queues are in PSRAM too, which faults
+            while the flash is erased or written: firmware uploads over
+            ATDECC always stop the streams first, and an NVS write while
+            streaming (the 10-min forced save) carries the same risk.
+            Internal-RAM queues (~128 KB) avoided the fault but starved
+            the talker.
 
     config EXAMPLE_AVB_AEC_FILTER_LENGTH
         int "Echo canceller filter length (16 ms frames)"
