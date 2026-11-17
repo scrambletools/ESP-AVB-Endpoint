@@ -20,6 +20,17 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 
+# Signed updates (off here; the key is not in the repository): firmware
+# taken over ATDECC must then be signed with a key the running firmware
+# was signed with. Secure Boot V2 RSA, checked at update time only:
+#   CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=y
+#   CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=y
+#   CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=y
+#   CONFIG_SECURE_BOOT_SIGNING_KEY="/path/outside/the/repo/signing_key.pem"
+# To move boards to a new key, sign one image with both keys
+# (espsecure sign-data --append-signatures); after it runs, images
+# signed with the new key alone are taken.
+
 CONFIG_ESP_NETIF_L2_TAP=y
 
 CONFIG_EXAMPLE_USE_INTERNAL_ETHERNET=y
