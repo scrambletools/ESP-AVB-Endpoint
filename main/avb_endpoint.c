@@ -60,6 +60,9 @@
 #include <esp_netif.h>
 #include <esp_vfs_l2tap.h>
 #endif
+#if CONFIG_ESP_AVB_COPROCESSOR_FW_OBJECT
+#include <hosted_avb_coprocessor_fw.h>
+#endif
 
 #if defined(CONFIG_ESP_PTP_PORT0_MEDIUM_WIFI_FTM) ||                               \
     defined(CONFIG_ESP_PTP_PORT1_MEDIUM_WIFI_FTM)
@@ -200,6 +203,19 @@ static void start_ethernet_endpoint(void) {
     ESP_LOGE(TAG, "Failed to set ethernet to promiscuous mode");
     abort();
   }
+
+#if CONFIG_ESP_AVB_COPROCESSOR_FW_OBJECT
+  /* The board's Wi-Fi coprocessor: its firmware as a second image for
+   * controllers, written over esp-hosted. */
+  static const esp_avb_coprocessor_fw_t coprocessor_firmware = {
+      .name = "Coprocessor firmware",
+      .max_length = HOSTED_AVB_COPROCESSOR_SLOT_SIZE,
+      .store = hosted_avb_coprocessor_fw_store,
+      .activate = hosted_avb_coprocessor_fw_activate,
+  };
+  if (esp_avb_register_coprocessor_fw(&coprocessor_firmware) != ESP_OK)
+    ESP_LOGE(TAG, "Coprocessor firmware not offered to controllers");
+#endif
 
   avb_start(&avb_config);
 }

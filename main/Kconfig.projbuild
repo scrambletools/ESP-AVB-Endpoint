@@ -10,7 +10,9 @@ menu "AVB Example Configuration"
     config EXAMPLE_AVB_MODEL_ID
         hex "Model ID"
         default 0x8C1F6436C0320001 if ESP_AVB_ROLE_ENDPOINT_WIRELESS
+        default 0x8C1F6436C0300002 if EXAMPLE_AVB_CODEC_ES8389_HAT && EXAMPLE_WIFI_COPROCESSOR
         default 0x8C1F6436C0300001 if EXAMPLE_AVB_CODEC_ES8389_HAT
+        default 0x8C1F6436C0300102 if EXAMPLE_WIFI_COPROCESSOR
         default 0x8C1F6436C0300101
         help
             The IEEE 1722.1 entity model ID, one per AEM layout, from the
@@ -19,7 +21,21 @@ menu "AVB Example Configuration"
             8C:1F:64:36:C0:32 the wireless ESP32-C6 one. The next octet
             is the codec variant (00 the ES8389 hat, 01 the onboard
             ES8311) and the last the AEM's revision. A build that changes
-            its AEM takes a new revision, registered first.
+            its AEM takes a new revision, registered first: revision 02 is
+            a board with a Wi-Fi coprocessor (one more memory object).
+
+    config EXAMPLE_WIFI_COPROCESSOR
+        bool "Board has an ESP-Hosted Wi-Fi coprocessor" if IDF_TARGET_ESP32P4
+        default n
+        help
+            The board carries a Wi-Fi coprocessor reached over ESP-Hosted,
+            e.g. the ESP32-C6 of a Waveshare ESP32-P4-WIFI6-POE-ETH. The
+            endpoint resets it at boot, carries on over Ethernet if it
+            doesn't come up, and offers its firmware to ATDECC controllers
+            as a second firmware image. Failover from wired to wireless
+            over it is not in yet. Build with
+            sdkconfig.defaults.wifi_coprocessor added to SDKCONFIG_DEFAULTS,
+            which holds the board's SDIO settings.
 
     config EXAMPLE_AVB_TALKER
         bool "Enable AVB Talker"

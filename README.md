@@ -115,6 +115,18 @@ controller, and the Apple ATDECC controller (built into MacOS).
   not supported for this flash model yet"; set
   `CONFIG_SPI_FLASH_AUTO_SUSPEND` and
   `CONFIG_SPI_FLASH_OVERRIDE_CHIP_DRIVER_LIST` to n for that board.
+- **ESP32-P4 with a Wi-Fi coprocessor:** a board that also carries an
+  ESP-Hosted Wi-Fi coprocessor, such as the ESP32-C6 of the Waveshare
+  ESP32-P4-WIFI6-POE-ETH, builds with `sdkconfig.defaults.wifi_coprocessor`
+  added (`idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.wifi_coprocessor" build`).
+  The endpoint resets the coprocessor at boot and carries on over
+  Ethernet if it doesn't come up. Its firmware is a second firmware
+  image for ATDECC controllers ("Coprocessor firmware", through
+  esp_hosted_avb), and the entity model takes revision 02. Failover
+  from wired to wireless over the coprocessor is planned: wired
+  preferred whenever it is connected, and a stream that moves to Wi-Fi
+  reconnects as Class B only where its talker offers Class B, otherwise
+  it stays disconnected until wired is back.
 - **ESP32-C6 wireless endpoint:** tested on a generic ESP32-C6 dev
   board. The c6 has no on-chip MAC, so the PTP daemon disciplines a
   software clock backed by `esp_timer` (`ptp_clock_sw.c`). Time sync
