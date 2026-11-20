@@ -122,7 +122,8 @@ controller, and the Apple ATDECC controller (built into MacOS).
   The endpoint resets the coprocessor at boot and carries on over
   Ethernet if it doesn't come up. Its firmware is a second firmware
   image for ATDECC controllers ("Coprocessor firmware", through
-  esp_hosted_avb), and the entity model takes revision 02. Failover
+  esp_hosted_avb), and the entity model's variant octet gains 10
+  (model 8C1F6436C0301001 with the ES8389 hat, ...1101 with the ES8311). Failover
   from wired to wireless over the coprocessor is planned: wired
   preferred whenever it is connected, and a stream that moves to Wi-Fi
   reconnects as Class B only where its talker offers Class B, otherwise
